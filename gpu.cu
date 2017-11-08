@@ -4,12 +4,13 @@
 
 #include "common.h"
 
-const int MAX_THREAD_PER_BLOCK = 1024;  // Для моей видеокарты (GeForce GT 730)
-const int THREADS_PER_BLOCK = 2;  // Равно значению blockDim.x
-const int BLOCK_PER_GRID = 2;
-const int THREADS_PER_GRID = THREADS_PER_BLOCK * BLOCK_PER_GRID;
-const int BUFFER_SIZE = 64; //1048576;  // 1 MiB
-const int DICTS_SIZE = THREADS_PER_GRID * 256 * sizeof(unsigned int);
+constexpr int MAX_THREAD_PER_BLOCK = 1024;  // Для моей видеокарты (GeForce GT 730)
+constexpr int THREADS_PER_BLOCK = MAX_THREAD_PER_BLOCK;  // Равно значению blockDim.x
+constexpr int BLOCK_PER_GRID = 1024;
+constexpr int THREADS_PER_GRID = THREADS_PER_BLOCK * BLOCK_PER_GRID;
+constexpr int DICTS_COUNT = THREADS_PER_GRID * 256;
+constexpr int DICTS_SIZE = DICTS_COUNT * sizeof(unsigned int);
+constexpr int BUFFER_SIZE = 256 * 1024;
 
 #define DIVIDE_CEIL(x, y) (((x) + (y) - 1) / (y))
 
@@ -43,21 +44,13 @@ __host__ dict_t process_gpu(const char *path)
 		exit(EXIT_FAILURE);
 	}
 
-	dict_t h_dicts = new unsigned int[DICTS_SIZE];
-
-	for (int i = 0; i < DICTS_SIZE; i++) {
-		h_dicts[i] = 0;
-	}
-
-	err = cudaMemcpy(d_dicts, h_dicts, DICTS_SIZE, cudaMemcpyHostToDevice);
+	err = cudaMemset(d_dicts, 0, DICTS_SIZE);
 
 	if (err) {
 		fprintf(stderr, "Ошибка при обнулении словаря на видеокарте: %s\n",
 				cudaGetErrorString(err));
 		exit(EXIT_FAILURE);
 	}
-
-	delete h_dicts;
 
 	char *d_buff = NULL;
 	err = cudaMalloc((void **)&d_buff, BUFFER_SIZE);
@@ -71,7 +64,7 @@ __host__ dict_t process_gpu(const char *path)
 
 	char *h_buff = new char[BUFFER_SIZE];
 
-	for (int i = 0; i < BUFFER_SIZE; i++) {
+	for (int i = BUFFER_SIZE; i >= 0; --i) {
 		h_buff[i] = '\0';
 	}
 
@@ -99,7 +92,7 @@ __host__ dict_t process_gpu(const char *path)
 			break;
 		}
 
-		for (int i = 0; i < BUFFER_SIZE; i++) {
+		for (int i = BUFFER_SIZE; i >= 0; --i) {
 			h_buff[i] = '\0';
 		}
 	}
@@ -114,7 +107,7 @@ __host__ dict_t process_gpu(const char *path)
 		exit(EXIT_FAILURE);
 	}
 
-	h_dicts = new unsigned int[DICTS_SIZE];
+	dict_t h_dicts = new unsigned int[DICTS_SIZE];
 	err = cudaMemcpy(h_dicts, d_dicts, DICTS_SIZE, cudaMemcpyDeviceToHost);
 
 	if (err) {
@@ -133,10 +126,10 @@ __host__ dict_t process_gpu(const char *path)
 
 	dict_t dict = new unsigned int[256];
 
-	for (int i = 0; i < 256; i++) {
+	for (int i = 256; i >= 0; --i) {
 		dict[i] = h_dicts[i];
 
-		for (int j = 1; j < THREADS_PER_GRID; j++) {
+		for (int j = THREADS_PER_GRID; j > 0; --j) {
 			dict[i] += h_dicts[i + 256 * j];
 		}
 	}
@@ -148,14 +141,6 @@ __host__ dict_t process_gpu(const char *path)
 
 __host__ int main(int argc, char **argv)
 {
-#if 0
-	printf("THREADS_PER_BLOCK = %d\n", THREADS_PER_BLOCK);
-	printf("BLOCK_PER_GRID = %d\n", BLOCK_PER_GRID);
-	printf("THREADS_PER_GRID = %d\n", THREADS_PER_GRID);
-	printf("BUFFER_SIZE = %d\n", BUFFER_SIZE);
-	printf("DICTS_SIZE = %d\n", DICTS_SIZE);
-	printf("sizeof(unsigned int) = %lu\n", sizeof(unsigned int));
-#endif
 	run(process_gpu, argc, argv);
 	return 0;
 }
