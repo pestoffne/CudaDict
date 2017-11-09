@@ -1,6 +1,6 @@
 #include <fstream>
 
-#include "common.h"
+#include "cpu.h"
 
 dict_t process_cpu(const char *path)
 {
@@ -27,18 +27,15 @@ dict_t process_cpu(const char *path)
 	do {
 		ifs.read(buffer, buffsize);
 
-		for (int i = 0; i < buffsize && buffer[i]; i++) {
+		for (int i = 0; i < buffsize; i++) {
 			dict[buffer[i] + 128]++;
 			buffer[i] = '\0';
 		}
 	} while (ifs);
 
 	ifs.close();
-	return dict;
-}
 
-int main(int argc, char **argv)
-{
-	run(process_cpu, argc, argv);
-	return 0;
+	//dict['\0' + 128] = 0;
+
+	return dict;
 }

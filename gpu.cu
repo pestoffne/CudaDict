@@ -2,7 +2,7 @@
 
 #include <cuda_runtime.h>
 
-#include "common.h"
+#include "gpu.h"
 
 constexpr int MAX_THREAD_PER_BLOCK = 1024;  // Для моей видеокарты (GeForce GT 730)
 constexpr int THREADS_PER_BLOCK = MAX_THREAD_PER_BLOCK;  // Равно значению blockDim.x
@@ -64,7 +64,7 @@ __host__ dict_t process_gpu(const char *path)
 
 	char *h_buff = new char[BUFFER_SIZE];
 
-	for (int i = BUFFER_SIZE; i >= 0; --i) {
+	for (int i = 0; i < BUFFER_SIZE; i++) {
 		h_buff[i] = '\0';
 	}
 
@@ -92,7 +92,7 @@ __host__ dict_t process_gpu(const char *path)
 			break;
 		}
 
-		for (int i = BUFFER_SIZE; i >= 0; --i) {
+		for (int i = 0; i < BUFFER_SIZE; i++) {
 			h_buff[i] = '\0';
 		}
 	}
@@ -126,21 +126,17 @@ __host__ dict_t process_gpu(const char *path)
 
 	dict_t dict = new unsigned int[256];
 
-	for (int i = 256; i >= 0; --i) {
+	for (int i = 0; i < 256; i++) {
 		dict[i] = h_dicts[i];
 
-		for (int j = THREADS_PER_GRID; j > 0; --j) {
+		for (int j = 1; j < THREADS_PER_GRID; j++) {
 			dict[i] += h_dicts[i + 256 * j];
 		}
 	}
 
 	delete h_dicts;
 
-	return dict;
-}
+	//dict['\0' + 128] = 0;
 
-__host__ int main(int argc, char **argv)
-{
-	run(process_gpu, argc, argv);
-	return 0;
+	return dict;
 }

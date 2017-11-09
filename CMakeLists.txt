@@ -2,7 +2,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 PROJECT(CudaDict)
 SET(CMAKE_CXX_FLAGS "-g -std=c++11")
 
-ADD_EXECUTABLE(DictCpu cpu.cpp common.cpp)
-
 FIND_PACKAGE(CUDA REQUIRED)
-CUDA_ADD_EXECUTABLE(DictGpu gpu.cu common.cpp)
+
+CUDA_ADD_EXECUTABLE(Dict common.cpp cpu.cpp gpu.h gpu.cu cmp.cpp)
