@@ -19,10 +19,10 @@ void print_diff(dict_t dict_cpu, dict_t dict_gpu)
 {
 	bool equal = true;
 
-	printf("char   cpu      gpu\n");
+	printf("char      cpu      gpu\n");
 	for (int i = 0; i < 256; i++) {
 		if (dict_cpu[i] != dict_gpu[i]) {
-			printf("'%1c'   %8d %8d\n", i - 128, dict_cpu[i], dict_gpu[i]);
+			printf(" '%1c' %8d %8d\n", i - 128, dict_cpu[i], dict_gpu[i]);
 			equal = false;
 		}
 	}

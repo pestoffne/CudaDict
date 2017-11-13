@@ -2,6 +2,8 @@
 
 #include "cpu.h"
 
+using namespace std;
+
 dict_t process_cpu(const char *path)
 {
 	ifstream ifs(path, ifstream::binary);
@@ -35,7 +37,7 @@ dict_t process_cpu(const char *path)
 
 	ifs.close();
 
-	//dict['\0' + 128] = 0;
+	dict['\0' + 128] = 0;
 
 	return dict;
 }
