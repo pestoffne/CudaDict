@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <fstream>
 #include <unistd.h>
 
@@ -6,7 +7,7 @@
 #include "gpu.h"
 
 constexpr int MAX_THREAD_PER_BLOCK = 1024;  // Для моей видеокарты (GeForce GT 730)
-constexpr int THREADS_PER_BLOCK = MAX_THREAD_PER_BLOCK;  // Равно значению blockDim.x в kernel
+constexpr int THREADS_PER_BLOCK = MAX_THREAD_PER_BLOCK;
 constexpr int BLOCK_PER_GRID = 1024;
 constexpr int THREADS_PER_GRID = THREADS_PER_BLOCK * BLOCK_PER_GRID;
 constexpr int DICTS_COUNT = THREADS_PER_GRID * 256;
@@ -35,6 +36,17 @@ __global__ void sum(dict_t dicts)
 	}
 }
 
+#define RUN(x) (run(x, __FILE__, __LINE__))
+
+__host__ void run(cudaError_t err, const char *file, int line)
+{
+	if (err) {
+		fprintf(stderr, "Ошибка в файле %s на строке %d:\n%s\n%s\n",
+				file, line, cudaGetErrorName(err), cudaGetErrorString(err));
+		exit(EXIT_FAILURE);
+	}
+}
+
 __host__ dict_t process_gpu(const char *path)
 {
 	ifstream ifs(path, ifstream::binary);
@@ -44,108 +56,37 @@ __host__ dict_t process_gpu(const char *path)
 		exit(EXIT_FAILURE);
 	}
 
-	cudaError_t err = cudaSuccess;
-
 	dict_t d_dicts = NULL;
-	err = cudaMalloc((void **)&d_dicts, DICTS_SIZE);
-
-	if (err) {
-		fprintf(stderr,
-				"Ошибка при выделении памяти для словаря на видеокарте: %s\n",
-				cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
-	}
-
-	err = cudaMemset(d_dicts, 0, DICTS_SIZE);
-
-	if (err) {
-		fprintf(stderr, "Ошибка при обнулении словаря на видеокарте: %s\n",
-				cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
-	}
+	RUN(cudaMalloc((void **)&d_dicts, DICTS_SIZE));
+	RUN(cudaMemset(d_dicts, 0, DICTS_SIZE));
 
 	char *d_buff = NULL;
-	err = cudaMalloc((void **)&d_buff, BUFFER_SIZE);
-
-	if (err) {
-		fprintf(stderr,
-				"Ошибка при выделении памяти для буфера на видеокарте: %s\n",
-				cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
-	}
+	RUN(cudaMalloc((void **)&d_buff, BUFFER_SIZE));
 
 	char *h_buff = new char[BUFFER_SIZE];
 
-	for (int i = 0; i < BUFFER_SIZE; i++) {
-		h_buff[i] = '\0';
-	}
-
-	for (;;) {
+	do {
+		fill(h_buff, h_buff + BUFFER_SIZE, '\0');
 		ifs.read(h_buff, BUFFER_SIZE);
 
-		err = cudaMemcpy(d_buff, h_buff, BUFFER_SIZE, cudaMemcpyHostToDevice);
-
-		if (err) {
-			fprintf(stderr, "Ошибка при копировании буфера из оперативной памяти в"
-					" память видеокарты: %s\n", cudaGetErrorString(err));
-			exit(EXIT_FAILURE);
-		}
-
+		RUN(cudaMemcpy(d_buff, h_buff, BUFFER_SIZE, cudaMemcpyHostToDevice));
 		kernel<<<BLOCK_PER_GRID, THREADS_PER_BLOCK>>>(d_buff, d_dicts);
-		err = cudaGetLastError();
-
-		if (err) {
-			fprintf(stderr, "Ошибка при запуске вычислений на видеокарте: %s\n",
-					cudaGetErrorString(err));
-			exit(EXIT_FAILURE);
-		}
-
-		if (!ifs) {
-			break;
-		}
-
-		for (int i = 0; i < BUFFER_SIZE; i++) {
-			h_buff[i] = '\0';
-		}
-	}
+		RUN(cudaGetLastError());
+	} while (ifs);
 
 	ifs.close();
 	delete h_buff;
-
-	err = cudaFree(d_buff);
-
-	if (err) {
-		fprintf(stderr, "Ошибка при освобождении буфера: %s\n", cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
-	}
+	RUN(cudaFree(d_buff));
 
 	sum<<<1, 256>>>(d_dicts);
-	err = cudaGetLastError();
-
-	if (err) {
-		fprintf(stderr, "Ошибка при запуске суммирования на видеокарте: %s\n",
-				cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
-	}
+	RUN(cudaGetLastError());
 
 	dict_t dict = new unsigned int[256];
-	err = cudaMemcpy(dict, d_dicts, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-
-	if (err) {
-		fprintf(stderr,
-				"Ошибка при копировании части словаря из памяти видеокарты в оперативную память: %s\n",
-				cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
-	}
-
-	err = cudaFree(d_dicts);
-
-	if (err) {
-		fprintf(stderr, "Ошибка при освобождении словаря: %s\n", cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
-	}
+	RUN(cudaMemcpy(dict, d_dicts, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost));
+	RUN(cudaFree(d_dicts));
 
 	dict['\0' + 128] = 0;
+	dict['a' + 128] = 1;
 
 	return dict;
 }
