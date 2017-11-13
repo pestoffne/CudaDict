@@ -8,21 +8,20 @@
 
 constexpr int MAX_THREAD_PER_BLOCK = 1024;  // Для моей видеокарты (GeForce GT 730)
 constexpr int THREADS_PER_BLOCK = MAX_THREAD_PER_BLOCK;
-constexpr int BLOCK_PER_GRID = 1024;
+constexpr int BLOCK_PER_GRID = 256;
 constexpr int THREADS_PER_GRID = THREADS_PER_BLOCK * BLOCK_PER_GRID;
 constexpr int DICTS_COUNT = THREADS_PER_GRID * 256;
 constexpr int DICTS_SIZE = DICTS_COUNT * sizeof(unsigned int);
-constexpr int BUFFER_SIZE = 256 * 1024;
 
 #define DIVIDE_CEIL(x, y) (((x) + (y) - 1) / (y))
 
 using namespace std;
 
-__global__ void kernel(const char *buff, dict_t dicts)
+__global__ void kernel(const char *buff, dict_t dicts, unsigned long size)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 
-	for (int j = i; j < BUFFER_SIZE; j += THREADS_PER_GRID) {
+	for (int j = i; j < size; j += THREADS_PER_GRID) {
 		dicts[buff[j] + 128 + 256 * i]++;
 	}
 }
@@ -47,35 +46,19 @@ __host__ void run(cudaError_t err, const char *file, int line)
 	}
 }
 
-__host__ dict_t process_gpu(const char *path)
+__host__ dict_t process_gpu(const char *text, unsigned long text_size)
 {
-	ifstream ifs(path, ifstream::binary);
-
-	if (!ifs) {
-		fprintf(stderr, "Невозможно прочитать файл.\n");
-		exit(EXIT_FAILURE);
-	}
-
 	dict_t d_dicts = NULL;
 	RUN(cudaMalloc((void **)&d_dicts, DICTS_SIZE));
 	RUN(cudaMemset(d_dicts, 0, DICTS_SIZE));
 
 	char *d_buff = NULL;
-	RUN(cudaMalloc((void **)&d_buff, BUFFER_SIZE));
+	RUN(cudaMalloc((void **)&d_buff, text_size));
 
-	char *h_buff = new char[BUFFER_SIZE];
+	RUN(cudaMemcpy(d_buff, text, text_size, cudaMemcpyHostToDevice));
+	kernel<<<BLOCK_PER_GRID, THREADS_PER_BLOCK>>>(d_buff, d_dicts, text_size);
+	RUN(cudaGetLastError());
 
-	do {
-		fill(h_buff, h_buff + BUFFER_SIZE, '\0');
-		ifs.read(h_buff, BUFFER_SIZE);
-
-		RUN(cudaMemcpy(d_buff, h_buff, BUFFER_SIZE, cudaMemcpyHostToDevice));
-		kernel<<<BLOCK_PER_GRID, THREADS_PER_BLOCK>>>(d_buff, d_dicts);
-		RUN(cudaGetLastError());
-	} while (ifs);
-
-	ifs.close();
-	delete h_buff;
 	RUN(cudaFree(d_buff));
 
 	sum<<<1, 256>>>(d_dicts);
@@ -84,8 +67,6 @@ __host__ dict_t process_gpu(const char *path)
 	dict_t dict = new unsigned int[256];
 	RUN(cudaMemcpy(dict, d_dicts, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost));
 	RUN(cudaFree(d_dicts));
-
-	dict['\0' + 128] = 0;
 
 	return dict;
 }
