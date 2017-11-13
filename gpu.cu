@@ -86,7 +86,6 @@ __host__ dict_t process_gpu(const char *path)
 	RUN(cudaFree(d_dicts));
 
 	dict['\0' + 128] = 0;
-	dict['a' + 128] = 1;
 
 	return dict;
 }
