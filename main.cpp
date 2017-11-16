@@ -3,6 +3,8 @@
 #include <ctime>
 #include <fstream>
 
+#include "common.h"
+
 #include "cpu.h"
 #include "gpu.h"
 
@@ -22,7 +24,11 @@ const char *read(const char *path, unsigned long size)
 	ifstream ifs(path, ifstream::binary);
 
 	if (!ifs) {
+#if LANG_RU
 		fprintf(stderr, "Невозможно прочитать файл.\n");
+#else
+		fprintf(stderr, "Can not read file.\n");
+#endif
 		exit(EXIT_FAILURE);
 	}
 
@@ -76,36 +82,58 @@ void print_diff(dict_t dict_cpu, dict_t dict_gpu)
 		}
 	}
 
+#if LANG_RU
 	printf("Cловари %s.\n", equal ? "совпадают" : "отличаются");
+#else
+	printf("Dicts are%s equal.\n", equal ? " " : "not");
+#endif
 }
 
 int main(int argc, char **argv)
 {
-	const char *path = "/home/evgeny/Документы/Test/1";
-	//const char *path = "/home/evgeny/Документы/lorem ipsum.txt";
-	printf("%s:\n", path);
+	UNUSED(argc);
+	UNUSED(argv);
 
+	const char *path = "/home/evgeny/Документы/Test/500";
 	unsigned long full_text_size = file_size(path);
-	printf("size = %lu\n", full_text_size);
 	const char *full_text = read(path, full_text_size);
+
+	printf("%s (%.1f MiB)\n", path, static_cast<float>(full_text_size) / 1024 / 1024);
 
 	time_t begin_t, end_t;
 
 	begin_t = clock();
 	dict_t dict_gpu = process_gpu(full_text, full_text_size);
 	end_t = clock();
+#if LANG_RU
 	printf("Время выполнения алгоритма на GPU = %.3f секунд.\n",
+#else
+	printf("Process time on GPU = %.3f seconds.\n",
+#endif
 		   static_cast<float>(end_t - begin_t) / CLOCKS_PER_SEC);
 
 	begin_t = clock();
 	dict_t dict_cpu = process_cpu(full_text, full_text_size);
 	end_t = clock();
+#if LANG_RU
 	printf("Время выполнения алгоритма на CPU = %.3f секунд.\n",
+#else
+	printf("Process time on CPU = %.3f seconds.\n",
+#endif
 		   static_cast<float>(end_t - begin_t) / CLOCKS_PER_SEC);
 
 	delete full_text;
 
 	print_diff(dict_cpu, dict_gpu);
+
+#if PRINT_GPU_DICT
+#if LANG_RU
+	printf("Часть словаря GPU:\n");
+#else
+	printf("Part of GPU dict:\n");
+#endif
+	print_dict(dict_gpu);
+#endif
 
 	return 0;
 }

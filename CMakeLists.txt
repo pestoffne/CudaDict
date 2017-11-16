@@ -4,4 +4,4 @@ SET(CMAKE_CXX_FLAGS "-g -std=c++11")
 
 FIND_PACKAGE(CUDA REQUIRED)
 
-CUDA_ADD_EXECUTABLE(Dict cpu.cpp gpu.h gpu.cu main.cpp)
+CUDA_ADD_EXECUTABLE(Dict common.h cpu.cpp gpu.h gpu.cu main.cpp)

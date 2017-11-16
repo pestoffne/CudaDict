@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <fstream>
 
+#include "common.h"
+
 #include "cpu.h"
 
 using namespace std;

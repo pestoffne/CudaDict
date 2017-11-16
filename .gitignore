@@ -1,2 +1,32 @@
+# Qt-creator
 *.txt.user
 *.autosave
+
+# MSVS
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x84/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+ipch/
+*.aps
+*.ncb
+*.plg
+
+# C++ build objects
+*.o
+*.so
+*.slo
+*.lo
+*.la
+*.lai
+*.dll
+*.dylib
