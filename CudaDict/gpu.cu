@@ -36,7 +36,7 @@ __host__ void run(cudaError_t err, const char *file, int line)
 		fprintf(stderr, "Error in file %s on line %d:\n%s\n%s\n",
 #endif
 				file, line, cudaGetErrorName(err), cudaGetErrorString(err));
-		exit(EXIT_FAILURE);
+		EXIT;
 	}
 }
 

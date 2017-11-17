@@ -20,6 +20,8 @@ ipch/
 *.aps
 *.ncb
 *.plg
+*.pdb
+*.sdf
 
 # C++ build objects
 *.o

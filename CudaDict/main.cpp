@@ -13,6 +13,16 @@ using namespace std;
 unsigned long file_size(const char *path)
 {
 	ifstream in(path, ifstream::ate | ifstream::binary);
+
+	if (!in) {
+#if LANG_RU
+		fprintf(stderr, "Невозможно прочитать файл.\n");
+#else
+		fprintf(stderr, "Can not read file.\n");
+#endif
+		EXIT;
+	}
+
 	return in.tellg();
 }
 
@@ -22,15 +32,6 @@ const char *read(const char *path, unsigned long size)
 	char *text = new char[text_size];
 
 	ifstream ifs(path, ifstream::binary);
-
-	if (!ifs) {
-#if LANG_RU
-		fprintf(stderr, "Невозможно прочитать файл.\n");
-#else
-		fprintf(stderr, "Can not read file.\n");
-#endif
-		exit(EXIT_FAILURE);
-	}
 
 	const unsigned long buffsize = 1024;
 
@@ -85,7 +86,7 @@ void print_diff(dict_t dict_cpu, dict_t dict_gpu)
 #if LANG_RU
 	printf("Cловари %s.\n", equal ? "совпадают" : "отличаются");
 #else
-	printf("Dicts are%s equal.\n", equal ? " " : "not");
+	printf("Dicts are%s equal.\n", equal ? "" : " not");
 #endif
 }
 
@@ -94,7 +95,7 @@ int main(int argc, char **argv)
 	UNUSED(argc);
 	UNUSED(argv);
 
-	const char *path = "/home/evgeny/Документы/Test/500";
+	const char *path = "main.cpp";
 	unsigned long full_text_size = file_size(path);
 	const char *full_text = read(path, full_text_size);
 
@@ -135,5 +136,5 @@ int main(int argc, char **argv)
 	print_dict(dict_gpu);
 #endif
 
-	return 0;
+	END;
 }
