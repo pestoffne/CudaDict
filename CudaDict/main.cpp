@@ -10,6 +10,8 @@
 
 using namespace std;
 
+#define TIME_INTERVAL(b, e) (static_cast<float>((e) - (b)) / CLOCKS_PER_SEC)
+
 unsigned long file_size(const char *path)
 {
 	ifstream in(path, ifstream::ate | ifstream::binary);
@@ -26,19 +28,18 @@ unsigned long file_size(const char *path)
 	return in.tellg();
 }
 
-const char *read(const char *path, unsigned long size)
+const char *read(const char *path, unsigned long file_size)
 {
-	unsigned long text_size = file_size(path);
-	char *text = new char[text_size];
+	char *text = new char[file_size];
 
 	ifstream ifs(path, ifstream::binary);
 
-	const unsigned long buffsize = 1024;
+	const unsigned long buff_size = 1024;
 
-	ifs.read(text, text_size % buffsize);
+	ifs.read(text, file_size % buff_size);
 
-	for (unsigned long i = text_size % buffsize; i < text_size; i += buffsize) {
-		ifs.read(text + i, buffsize);
+	for (unsigned long i = file_size % buff_size; i < file_size; i += buff_size) {
+		ifs.read(text + i, buff_size);
 	}
 
 	ifs.close();
@@ -111,7 +112,7 @@ int main(int argc, char **argv)
 #else
 	printf("Process time on GPU = %.3f seconds.\n",
 #endif
-		   static_cast<float>(end_t - begin_t) / CLOCKS_PER_SEC);
+		   TIME_INTERVAL(begin_t, end_t));
 
 	begin_t = clock();
 	dict_t dict_cpu = process_cpu(full_text, full_text_size);
@@ -121,7 +122,7 @@ int main(int argc, char **argv)
 #else
 	printf("Process time on CPU = %.3f seconds.\n",
 #endif
-		   static_cast<float>(end_t - begin_t) / CLOCKS_PER_SEC);
+		   TIME_INTERVAL(begin_t, end_t));
 
 	delete full_text;
 
